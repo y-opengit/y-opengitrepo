@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="買い物メモ">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#cfc6b0">
+<title>買い物メモ</title>
+<style>
+  :root {
+    --paper: #f2ede1;
+    --paper-edge: #e2dac8;
+    --ink: #2f2a22;
+    --ink-soft: #7a7161;
+    --line: #d8cfba;
+    --stamp: #b5432e;
+    --done: #9c9483;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: #cfc6b0;
+    display: flex;
+    justify-content: center;
+    padding: 24px 12px 60px;
+    font-family: 'Courier New', 'Menlo', monospace;
+    color: var(--ink);
+  }
+
+  .receipt {
+    width: 100%;
+    max-width: 380px;
+    background: var(--paper);
+    position: relative;
+    padding: 28px 22px 32px;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.18);
+  }
+
+  .receipt::before,
+  .receipt::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 10px;
+    background:
+      linear-gradient(135deg, var(--paper) 25%, transparent 25%) -5px 0,
+      linear-gradient(225deg, var(--paper) 25%, transparent 25%) -5px 0;
+    background-size: 10px 10px;
+    background-color: #cfc6b0;
+  }
+  .receipt::before { top: -10px; }
+  .receipt::after { bottom: -10px; transform: rotate(180deg); }
+
+  header {
+    text-align: center;
+    margin-bottom: 6px;
+  }
+
+  .stamp {
+    display: inline-block;
+    font-size: 22px;
+    letter-spacing: 2px;
+    color: var(--stamp);
+    border: 2px solid var(--stamp);
+    padding: 6px 14px;
+    border-radius: 4px;
+    transform: rotate(-2deg);
+    font-weight: bold;
+  }
+
+  .sub {
+    margin-top: 14px;
+    font-size: 11px;
+    color: var(--ink-soft);
+    letter-spacing: 1px;
+  }
+
+  .divider {
+    border: none;
+    border-top: 1.5px dashed var(--line);
+    margin: 18px 0;
+  }
+
+  .add-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  #item-input {
+    flex: 1;
+    border: none;
+    border-bottom: 2px solid var(--ink);
+    background: transparent;
+    padding: 8px 2px;
+    font-family: inherit;
+    font-size: 16px;
+    color: var(--ink);
+    outline: none;
+  }
+
+  #item-input::placeholder {
+    color: var(--ink-soft);
+  }
+
+  #add-btn {
+    border: 2px solid var(--ink);
+    background: var(--ink);
+    color: var(--paper);
+    font-family: inherit;
+    font-size: 14px;
+    padding: 0 16px;
+    cursor: pointer;
+    letter-spacing: 1px;
+  }
+
+  #add-btn:active {
+    transform: scale(0.96);
+  }
+
+  .history-section {
+    margin-top: 16px;
+  }
+
+  .history-label {
+    font-size: 11px;
+    color: var(--ink-soft);
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+
+  .history-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 8px;
+  }
+
+  .chip {
+    font-family: inherit;
+    font-size: 13px;
+    color: var(--ink);
+    background: transparent;
+    border: 1px dashed var(--ink-soft);
+    border-radius: 20px;
+    padding: 4px 12px;
+    cursor: pointer;
+  }
+
+  .chip:active {
+    background: var(--line);
+  }
+
+  .chip.added {
+    opacity: 0.45;
+    border-style: solid;
+    cursor: default;
+  }
+
+  .history-empty {
+    font-size: 12px;
+    color: var(--ink-soft);
+    font-style: italic;
+  }
+
+  ul#list {
+    list-style: none;
+    margin: 20px 0 0;
+    padding: 0;
+    min-height: 40px;
+  }
+
+  li.item {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 10px 2px;
+    border-bottom: 1px dotted var(--line);
+    font-size: 16px;
+    cursor: pointer;
+    transition: opacity 0.35s ease, transform 0.35s ease;
+    user-select: none;
+  }
+
+  li.item .qty-mark {
+    color: var(--ink-soft);
+    font-size: 13px;
+    min-width: 14px;
+  }
+
+  li.item .label {
+    flex: 1;
+    word-break: break-word;
+  }
+
+  li.item .price {
+    color: var(--ink-soft);
+    font-size: 12px;
+  }
+
+  li.item.removing {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+
+  .empty-state {
+    text-align: center;
+    color: var(--ink-soft);
+    font-size: 13px;
+    padding: 30px 10px 10px;
+    line-height: 1.8;
+  }
+
+  footer.total-line {
+    margin-top: 20px;
+    padding-top: 14px;
+    border-top: 1.5px dashed var(--line);
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--ink-soft);
+    letter-spacing: 1px;
+  }
+
+  .barcode {
+    margin-top: 18px;
+    height: 34px;
+    background: repeating-linear-gradient(
+      90deg,
+      var(--ink) 0px, var(--ink) 2px,
+      transparent 2px, transparent 4px,
+      var(--ink) 4px, var(--ink) 5px,
+      transparent 5px, transparent 9px
+    );
+    opacity: 0.85;
+  }
+</style>
+</head>
+<body>
+
+<div class="receipt">
+  <header>
+    <div class="stamp">買い物メモ</div>
+    <div class="sub">思いついたらすぐ書く、買ったらタップで消える</div>
+  </header>
+
+  <hr class="divider">
+
+  <div class="add-row">
+    <input id="item-input" type="text" placeholder="例）歯ブラシ" maxlength="40" autocomplete="off">
+    <button id="add-btn">追加</button>
+  </div>
+
+  <div id="history-section" class="history-section">
+    <div class="history-label">よく買うもの（タップで追加）</div>
+    <div id="history-chips" class="history-chips"></div>
+  </div>
+
+  <ul id="list"></ul>
+
+  <div id="empty" class="empty-state">まだ何もありません。<br>買うものを思いついたら上の欄へ。</div>
+
+  <footer class="total-line">
+    <span id="count-label">0 件</span>
+    <span>ITEM LIST</span>
+  </footer>
+  <div class="barcode"></div>
+</div>
+
+<script>
+(function () {
+  const STORAGE_KEY = 'shopping-memo-items';
+  const HISTORY_KEY = 'shopping-memo-history';
+  const HISTORY_RAW_MAX = 40;   // 記録しておく商品名の上限（頻度カウント用）
+  const HISTORY_SHOW_MAX = 10;  // 「よく買うもの」として表示する上限
+  const HISTORY_THRESHOLD = 2;  // これ以上入力された商品だけ表示
+  const input = document.getElementById('item-input');
+  const addBtn = document.getElementById('add-btn');
+  const list = document.getElementById('list');
+  const empty = document.getElementById('empty');
+  const countLabel = document.getElementById('count-label');
+  const historySection = document.getElementById('history-section');
+  const historyChips = document.getElementById('history-chips');
+
+  let items = [];
+  let history = []; // [{ text, count }, ...] 最近使った順
+
+  function storageGet(key) {
+    try {
+      return window.localStorage.getItem(key);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function storageSet(key, value) {
+    try {
+      window.localStorage.setItem(key, value);
+    } catch (e) {
+      console.error('保存に失敗しました', e);
+    }
+  }
+
+  function load() {
+    try {
+      const raw = storageGet(STORAGE_KEY);
+      items = raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      items = [];
+    }
+    try {
+      const rawHistory = storageGet(HISTORY_KEY);
+      const parsed = rawHistory ? JSON.parse(rawHistory) : [];
+      // 旧形式（文字列の配列）からの移行にも対応
+      history = parsed.map((h) =>
+        typeof h === 'string' ? { text: h, count: 1 } : h
+      );
+    } catch (e) {
+      history = [];
+    }
+    // 履歴機能より前に追加されていた商品も、履歴に補完しておく（1回分としてカウント）
+    let backfilled = false;
+    items.forEach((text) => {
+      if (!history.some((h) => h.text === text)) {
+        history.push({ text, count: 1 });
+        backfilled = true;
+      }
+    });
+    if (backfilled) saveHistory();
+    render();
+  }
+
+  function save() {
+    storageSet(STORAGE_KEY, JSON.stringify(items));
+  }
+
+  function saveHistory() {
+    storageSet(HISTORY_KEY, JSON.stringify(history));
+  }
+
+  function rememberInHistory(text) {
+    const idx = history.findIndex((h) => h.text === text);
+    if (idx >= 0) {
+      const entry = history[idx];
+      entry.count += 1;
+      history.splice(idx, 1);
+      history.unshift(entry);
+    } else {
+      history.unshift({ text, count: 1 });
+    }
+    if (history.length > HISTORY_RAW_MAX) history = history.slice(0, HISTORY_RAW_MAX);
+    saveHistory();
+  }
+
+  function render() {
+    list.innerHTML = '';
+    if (items.length === 0) {
+      empty.style.display = 'block';
+    } else {
+      empty.style.display = 'none';
+      items.forEach((text, idx) => {
+        const li = document.createElement('li');
+        li.className = 'item';
+        li.innerHTML =
+          '<span class="qty-mark">1x</span>' +
+          '<span class="label"></span>' +
+          '<span class="price">タップで完了</span>';
+        li.querySelector('.label').textContent = text;
+        li.addEventListener('click', () => removeItem(idx, li));
+        list.appendChild(li);
+      });
+    }
+    countLabel.textContent = items.length + ' 件';
+    renderHistory();
+  }
+
+  function renderHistory() {
+    historyChips.innerHTML = '';
+    historySection.style.display = 'block';
+    const candidates = history
+      .filter((h) => h.count >= HISTORY_THRESHOLD)
+      .slice(0, HISTORY_SHOW_MAX);
+    if (candidates.length === 0) {
+      const msg = document.createElement('div');
+      msg.className = 'history-empty';
+      msg.textContent = '同じ商品を2回以上入力すると、ここに表示されます。';
+      historyChips.appendChild(msg);
+      return;
+    }
+    candidates.forEach((entry) => {
+      const alreadyOnList = items.includes(entry.text);
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'chip' + (alreadyOnList ? ' added' : '');
+      chip.textContent = entry.text + (alreadyOnList ? ' ✓' : '');
+      if (!alreadyOnList) {
+        chip.addEventListener('click', () => addItem(entry.text));
+      } else {
+        chip.disabled = true;
+      }
+      historyChips.appendChild(chip);
+    });
+  }
+
+  function addItem(presetText) {
+    const text = (typeof presetText === 'string' ? presetText : input.value).trim();
+    if (!text) return;
+    if (items.includes(text)) {
+      if (typeof presetText !== 'string') input.value = '';
+      return;
+    }
+    items.push(text);
+    rememberInHistory(text);
+    if (typeof presetText !== 'string') input.value = '';
+    render();
+    save();
+    input.focus();
+  }
+
+  function removeItem(idx, li) {
+    li.classList.add('removing');
+    setTimeout(() => {
+      items.splice(idx, 1);
+      render();
+      save();
+    }, 300);
+  }
+
+  addBtn.addEventListener('click', () => addItem());
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') addItem();
+  });
+
+  load();
+})();
+</script>
+
+</body>
+</html>
